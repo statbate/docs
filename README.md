@@ -2,28 +2,48 @@
 <img src="https://raw.githubusercontent.com/poiuty/statbate/master/www/img/github.jpg">
 </p>
 
+Statbate is running on the <a href="https://www.hetzner.com/dedicated-rootserver/ax102">AX102 Hetzner server</a>.<br/>
+CPU 7950X3D, 128 GB DDR5 ECC, 2 x1.92 TB NVMe (KIOXIA KCD81RUG1T92), 1 GBit/s network.
+
+I am using ext4 file system. <a href="https://clickhouse.com/docs/ru/operations/tips#file-system">Clickhouse</a> and <a href="https://mariadb.com/kb/en/filesystem-optimizations/">Mariadb</a> work better with `noatime`
+```
+# nano /etc/fstab
+UUID=xxx / ext4 defaults,noatime 0 0
+
+# after that you can do a remount or reboot
+# mount -o remount,noatime /
+
+# check changes
+# mount
+/dev/md1 on / type ext4 (rw,noatime)
+```
+
+CPU Scaling Governor. Always use the performance scaling governor.
+```
+# let's check
+# cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+schedutil
+
+# now let's change
+# apt-get install cpufrequtils
+# nano /etc/default/cpufrequtils
+ENABLE="true"
+GOVERNOR="performance"
+MAX_SPEED="0"
+MIN_SPEED="0"
+
+# systemctl restart cpufrequtils.service
+# and check again
+# cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+performance
+```
+
+After installing OS Debian 11, I need to update and install packages and change config files.
+
 ```
 apt-get update
 apt-get upgrade
 apt-get install htop bwm-ng strace lsof iotop git build-essential screen
-adduser --disabled-login stat
-```
-
-```
-git clone https://github.com/poiuty/statbate.git
-
-mkdir /home/stat/go
-mkdir /home/stat/php
-mkdir /home/stat/python
-mkdir /var/www/statbate
-
-cp -r /statbate/app /home/stat/go
-cp -r /statbate/cli/*.php /home/stat/php
-cp -r /statbate/cli/*.py /home/stat/python
-cp -r /statbate/html/* /var/www/statbate
-
-chown -R stat:stat /home/stat
-chown -R www-data:www-data /var/www/statbate
 ```
 
 1. <a href="https://github.com/poiuty/statbate/blob/master/install/mariadb.md">Mariadb</a><br/>
@@ -34,12 +54,4 @@ chown -R www-data:www-data /var/www/statbate
 6. <a href="https://github.com/poiuty/statbate/blob/master/install/redis.md">Redis</a><br/>
 7. <a href="https://github.com/poiuty/statbate/blob/master/install/app.md">App</a>
 8. Add <a href="https://github.com/poiuty/statbate/blob/master/install/conf/cron">cron</a>
-```
-# nano /etc/cron.d/php
 
-*/10 * * * *  stat   php    /home/stat/php/start2.php  > /home/stat/php/log.txt 2>&1
-* * * * *  www-data   php    /var/www/statbate/root/index.php  >/dev/null 2>&1
-
-# systemctl restart cron
-# systemctl status cron
-```
